@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Vanishing of William - 1897</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #020204;
+            font-family: 'Courier New', Courier, monospace;
+            color: #dcd6cd;
+        }
+
+        /* --- Crosshair Reticle --- */
+        #reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* --- HUD Display Overlays --- */
+        #hud-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 5;
+        }
+        .hidden { display: none !important; }
+        
+        #objective-tracker {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #8c1c1c;
+            text-shadow: 0 0 4px rgba(140, 28, 28, 0.6);
+            background: rgba(5, 5, 8, 0.6);
+            padding: 10px 15px;
+            border-left: 3px solid #8c1c1c;
+            align-self: flex-start;
+        }
+
+        #controls-legend {
+            font-size: 12px;
+            color: #706b64;
+            background: rgba(5, 5, 8, 0.6);
+            padding: 10px 15px;
+            align-self: flex-start;
+        }
+
+        /* --- CRT Screen Effect Base --- */
+        .crt-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 3, 5, 0.85);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .crt-paper-frame {
+            background: #eae2cf;
+            color: #1a1714;
+            width: 100%;
+            max-width: 650px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 1px solid #bdae8f;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .crt-terminal-frame {
+            background: #07090e;
+            color: #3ae23a;
+            border: 3px solid #1c3524;
+            width: 100%;
+            max-width: 700px;
+            padding: 35px;
+            box-shadow: 0 0 20px rgba(58, 226, 58, 0.2);
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 1px dashed currentColor;
+            padding-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .modal-body {
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            flex-grow: 1;
+            margin-bottom: 30px;
+            overflow-y: auto;
+        }
+
+        .ui-btn {
+            background: transparent;
+            border: 1px solid currentColor;
+            color: inherit;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+            align-self: flex-end;
+        }
+        .ui-btn:hover {
+            background: currentColor;
+            color: #000;
+        }
+        .crt-paper-frame .ui-btn:hover {
+            color: #eae2cf;
+        }
+
+        /* --- Interactive Lore Journal (Tab Key) --- */
+        #journal-overlay {
+            background: rgba(4, 4, 6, 0.95);
+        }
+        .journal-container {
+            width: 100%;
+            max-width: 900px;
+            height: 80vh;
+            border: 1px solid #332b24;
+            background: #0b0c10;
+            display: grid;
+            grid-template-columns: 300px 1px flex-grow;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+        }
+        .journal-left-pane {
+            padding: 25px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .journal-divider {
+            background-color: #332b24;
+            height: 100%;
+        }
+        .journal-right-pane {
+            padding: 35px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .journal-header {
+            font-size: 14px;
+            color: #61574d;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+        .lore-entry-tab {
+            background: #12141a;
+            border: 1px solid #222530;
+            padding: 12px;
+            text-align: left;
+            color: #8c8274;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.15s;
+        }
+        .lore-entry-tab:hover {
+            border-color: #5c4e43;
+            color: #dcd6cd;
+        }
+        .lore-entry-tab.active-tab {
+            background: #1b130e;
+            border-color: #8c532e;
+            color: #e5935c;
+        }
+        .lore-content-title {
+            font-size: 16px;
+            color: #bfa38a;
+            margin-bottom: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #221e1a;
+            padding-bottom: 10px;
+        }
+        .lore-content-body {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #a49b90;
+            white-space: pre-wrap;
+        }
+
+        /* --- Standalone Screen Overlays (Menu & Pause) --- */
+        .fullscreen-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #040406;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+        }
+        .game-title {
+            font-size: 28px;
+            letter-spacing: 6px;
+            color: #a63232;
+            text-shadow: 0 0 8px rgba(166, 50, 50, 0.4);
+            text-align: center;
+            line-height: 1.5;
+        }
+        .game-subtitle {
+            font-size: 12px;
+            color: #524e49;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 250px;
+        }
+        .menu-btn {
+            background: #0d0e12;
+            border: 1px solid #2b2e38;
+            color: #928b81;
+            padding: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        .menu-btn:hover {
+            background: #1f1111;
+            border-color: #8c2e2e;
+            color: #f2e6e6;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="reticle"></div>
+
+    <!-- Gameplay Heads Up Display Layer -->
+    <div id="hud-container" class="hidden">
+        <div id="objective-tracker">OBJECTIVE: Find the old key dropped around the front steps and enter the house.</div>
+        <div id="controls-legend">WALK: W, A, S, D | RUN: Shift | INTERACT: Left Click | OPEN GAME LOG JOURNAL: [TAB]</div>
+    </div>
+
+    <!-- Main Menu Interface Screen -->
+    <div id="main-menu" class="fullscreen-menu">
+        <div class="game-title">
+            THE VANISHING OF WILLIAM
+            <div class="game-subtitle">NOVEMBER 14, 1897 — AN INTERACTIVE HORROR INVESTIGATION</div>
+        </div>
+        <div class="menu-options">
+            <button id="start-btn" class="menu-btn">ENTER HOOD HOUSE</button>
+        </div>
+    </div>
+
+    <!-- Pause Interface Screen -->
+    <div id="pause-menu" class="fullscreen-menu hidden">
+        <div class="game-title">INVESTIGATION SUSPENDED</div>
+        <div class="menu-options">
+            <button id="resume-btn" class="menu-btn">RESUME EXPLORATION</button>
+        </div>
+    </div>
+
+    <!-- Found Paper Note Inspection Modal Overlay -->
+    <div id="document-modal" class="crt-modal" style="display: none;">
+        <div class="crt-paper-frame">
+            <div id="document-title" class="modal-title">DOCUMENT SCRAP</div>
+            <div id="document-text" class="modal-body">Text details loaded dynamically...</div>
+            <button id="close-document-btn" class="ui-btn">FOLD AWAY</button>
+        </div>
+    </div>
+
+    <!-- Found VHS Tape Cathode Ray Tube TV Console Overlay -->
+    <div id="tv-modal" class="crt-modal" style="display: none;">
+        <div class="crt-terminal-frame">
+            <div id="tv-title" class="modal-title">CRT LOG TRANSCRIPT</div>
+            <div id="tv-story-text" class="modal-body">Decoding static video trace feeds...</div>
+            <button id="close-tv-btn" class="ui-btn">POWER DOWN CONSOLE</button>
+        </div>
+    </div>
+
+    <!-- Interactive Story Log Journal Layout (Triggered via Tab Key) -->
+    <div id="journal-overlay" class="crt-modal class-journal hidden">
+        <div class="journal-container">
+            <div class="journal-left-pane">
+                <div class="journal-header">COLLECTED DATA</div>
+                <div id="journal-tabs-list" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Unlocked lore item button components are automatically generated here -->
+                </div>
+            </div>
+            <div class="journal-divider"></div>
+            <div class="journal-right-pane">
+                <div id="journal-view-title" class="lore-content-title">STORY FILES INSTALLED</div>
+                <div id="journal-view-body" class="lore-content-body">Select an uncovered lore object file from the left tracking column pane to reconstruct William's vanishing.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Initialization Target Execution Script -->
+    <script type="module" src="game.js"></script>
+</body>
+</html>
